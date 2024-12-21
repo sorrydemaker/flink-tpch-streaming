@@ -1,0 +1,10 @@
+com\example\Application.class
+com\example\config\FlinkConfig.class
+com\example\model\QueryResult.class
+com\example\service\StreamingQueryService$JobInfo.class
+com\example\config\WebConfig.class
+com\example\service\sink\QueryResultSink.class
+com\example\service\StreamingQueryService.class
+com\example\config\WebSocketConfig.class
+com\example\model\QueryRequest.class
+com\example\handler\LiveQueryWebSocketHandler.class

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TPC-H Live Query Results</title>
+    <style>
+        #resultTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        #resultTable th, #resultTable td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        #resultTable th {
+            background-color: #f4f4f4;
+        }
+        .status-connected {
+            background-color: #dff0d8;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .console-log {
+            background-color: #f8f9fa;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+<h1>TPC-H Live Query Results</h1>
+
+<div>
+    <select id="querySelect">
+        <option value="Q3">Query 3 - Shipping Priority</option>
+        <option value="Q1">Query 1 - Pricing Summary Report</option>
+    </select>
+    <button onclick="startQuery()">Start Query</button>
+    <button onclick="stopQuery()">Stop Query</button>
+</div>
+
+<div id="status" class="status-connected">Connected</div>
+
+<div id="console" class="console-log"></div>
+
+<table id="resultTable">
+    <thead>
+    <tr id="headerRow">
+    </tr>
+    </thead>
+    <tbody id="resultBody">
+    </tbody>
+</table>
+
+<script>
+    let ws = null;
+
+    function connectWebSocket() {
+        ws = new WebSocket('ws://localhost:8080/ws/query');
+
+        ws.onopen = function() {
+            logToConsole('WebSocket connected');
+            document.getElementById('status').textContent = 'Connected';
+        };
+
+        ws.onmessage = function(event) {
+            const result = JSON.parse(event.data);
+            logToConsole('Received result: ' + JSON.stringify(result, null, 2));
+            handleQueryResult(result);
+        };
+
+        ws.onclose = function() {
+            logToConsole('WebSocket disconnected');
+            document.getElementById('status').textContent = 'Disconnected';
+        };
+
+        ws.onerror = function(error) {
+            logToConsole('WebSocket error: ' + error);
+            document.getElementById('status').textContent = 'Error';
+        };
+    }
+
+    function startQuery() {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            alert('WebSocket not connected!');
+            return;
+        }
+
+        const querySelect = document.getElementById('querySelect');
+        const request = {
+            action: 'start',
+            queryName: querySelect.value
+        };
+
+        logToConsole('Sending start request: ' + JSON.stringify(request));
+        ws.send(JSON.stringify(request));
+    }
+
+    function stopQuery() {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            alert('WebSocket not connected!');
+            return;
+        }
+
+        const request = {
+            action: 'stop'
+        };
+
+        logToConsole('Sending stop request: ' + JSON.stringify(request));
+        ws.send(JSON.stringify(request));
+    }
+
+    function handleQueryResult(result) {
+        if (result.error) {
+            logToConsole('Query error: ' + result.message);
+            return;
+        }
+
+        updateResultTable(result.data);
+    }
+
+    function updateResultTable(data) {
+        if (!data || !data.length) return;
+
+        const headerRow = document.getElementById('headerRow');
+        const resultBody = document.getElementById('resultBody');
+
+        headerRow.innerHTML = '';
+        resultBody.innerHTML = '';
+
+        Object.keys(data[0]).forEach(key => {
+            const th = document.createElement('th');
+            th.textContent = key;
+            headerRow.appendChild(th);
+        });
+
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            Object.values(row).forEach(value => {
+                const td = document.createElement('td');
+                td.textContent = value;
+                tr.appendChild(td);
+            });
+            resultBody.appendChild(tr);
+        });
+    }
+
+    function logToConsole(message) {
+        const console = document.getElementById('console');
+        console.innerHTML += message + '<br>';
+        console.scrollTop = console.scrollHeight;
+    }
+
+    window.addEventListener('load', connectWebSocket);
+</script>
+</body>
+</html>
